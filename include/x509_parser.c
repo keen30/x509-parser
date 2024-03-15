@@ -101,8 +101,42 @@ void x509_parse( void )
         {
             switch (parse_attribute_state)
             {
-            case /* constant-expression */:
-                /* code */
+                
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_TBSCERT_STATE:
+                break;
+            case PARSE_ATTR_VERSION_EXPLICIT_STATE:
+                break;
+            case PARSE_ATTR_VERSION_STATE:
+                break;
+            case PARSE_ATTR_SIGALGO_STATE:
+                break;
+            case PARSE_ATTR_ISSUER_CN_OID_STATE:
+                break;
+            case PARSE_ATTR_ISSUER_CN_STATE:
+                break;
+            case PARSE_ATTR_VALIDITY_UTCTIME_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
+                break;
+            case PARSE_ATTR_CERT_STATE:
                 break;
             
             default:
