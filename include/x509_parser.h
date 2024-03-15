@@ -16,7 +16,8 @@
 
 #define MAX_CERTIFICATES                1
 
-#define EXTENDED_LENGTH_BUFFER_SIZE     2 /* This means 2 bytes unsigned integer*/
+#define LENGTH_BUFFER_SIZE          2       /* This means 2 bytes unsigned integer*/
+#define ATTRIBUTE_BUFFER_SIZE       1024    /* Attribute buffer size.*/
 
 /**
  * @brief DER Encoding of ASN.1 Types
@@ -41,13 +42,14 @@
 #define TAG_SEQUENCE                (u1)0x30
 #define TAG_SET                     (u1)0x31
 #define TAG_CHOICE                  (u1)0x82
+
 #define TAG_IMPLICIT_PRIMITIVE_MASK     (u1)0x80
 #define TAG_IMPLICIT_CONSTRUCTIVE_MASK  (u1)0xA0
-
 
 #define BYTE_MASK_1BIT              (u1)0b1
 #define BYTE_MASK_2BITS             (u1)0b11
 #define BYTE_MASK_5BITS             (u1)0b11111
+#define BYTE_MASK_7BITS             (u1)0x7F
 
 #define TAG_NUMBER_MASK             BYTE_MASK_5BITS
 
@@ -56,16 +58,23 @@
 #define CLASS_CONTEXT_SPECIFIC      (u1)0b10
 #define CLASS_PRIVATE               (u1)0b11
 
+#define ENCODING_FORM_PRIMITIVE     0
+#define ENCODING_FORM_CONSTRUCTIVE  5
+
 #define ENCODING_FORM_BIT_POS       5
 #define ENCODING_FORM_BIT_MASK      (u1)( BYTE_MASK_1BIT<<ENCODING_FORM_BIT_POS )
 
 #define CLASS_BITS_POS              6
 #define CLASS_BITS_MASK             (u1)( BYTE_MASK_2BITS<<CLASS_BITS_POS )
 
+#define LENGTH_BASIC_MASK           BYTE_MASK_7BITS
 #define LENGTH_EXTENDED_BIT_POS     7
 #define LENGTH_EXTENDED_BIT_MASK    (u1)( BYTE_MASK_1BIT<<LENGTH_EXTENDED_BIT_POS )
 
 #define LENGTH_EXTENDED_TRUE        1
+
+#define BIT7_POS                    7
+#define BIT7_MASK                   (u1)( BYTE_MASK_1BIT<<BIT7_POS )
 
 #define PARSE_SUCCESS                       (u1)1
 #define PARSE_FAIL                          (u1)0
@@ -86,6 +95,7 @@
 #define PARSE_READLENGTH_COMPLETE           (u1)2
 
 typedef enum {
+    PARSE_TLV_ABNORMAL_STATE,
     PARSE_TLV_TAG_STATE,
     PARSE_TLV_LENGTH_STATE,
     PARSE_TLV_LENGTH_EXT_STATE,
@@ -114,7 +124,7 @@ typedef struct {
     u1 class;
     u1 encoding_form;
     u1 tag;
-    u2 length;
+    u4 length;
     u1 readLengthState;
     u1 *attrBuffer;
     u1 readContentState;
@@ -122,7 +132,7 @@ typedef struct {
 
 
 typedef struct {
-    u2 length;
+    u4 length;
     u1 *readPtr;
     u1 *data;
 } X509_Cert_t;
@@ -141,11 +151,11 @@ typedef struct {
     u1 *validityNotAfter;
     u1 subject_cn_length;
     u1 *subject_cn;
-    u1 publicKey_length;
+    u4 publicKey_length;
     u1 *publicKey;
-    u1 publicKeyExp_length;
+    u4 publicKeyExp_length;
     u1 *publicKeyExp;
-    u1 signatureInfoValue_length;
+    u4 signatureInfoValue_length;
     u1 *signatureInfoValue;
 } X509_Cert_Attributes_t;
 
@@ -153,11 +163,15 @@ tlv_info_t tlvInfo;
 
 X509_Cert_t *Certificate;
 
+X509_Cert_Attributes_t Cert_Attributes;
+
 u1 parse_result;
 
 u1 parse_tlv_state;
 
 u1 parse_attribute_state;
+
+u1 lengthBuffer[LENGTH_BUFFER_SIZE];
 
 void x509_load( X509_Cert_t *cert );
 void x509_parse_init( X509_Cert_t *cert);
