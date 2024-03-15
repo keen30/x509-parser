@@ -38,6 +38,7 @@
 #define TAG_PRINTABLESTRING         (u1)0x13
 #define TAG_TELETEXSTRING           (u1)0x14
 #define TAG_IA5STRING               (u1)0x16
+#define TAG_UNIVERSALSTRING         (u1)0x1C
 #define TAG_BMPSTRING               (u1)0x1E
 #define TAG_SEQUENCE                (u1)0x30
 #define TAG_SET                     (u1)0x31
@@ -94,6 +95,10 @@
 #define PARSE_READLENGTH_EXTENDED           (u1)1
 #define PARSE_READLENGTH_COMPLETE           (u1)2
 
+/*For the mean time, only 1 OID is supported for issuer and subject*/
+#define OID_ISSUER_SUBJECT_CN_SIZE          (u1)5      
+#define OID_ISSUER_SUBJECT_CN               { 0x06, 0x03, 0x55, 0x04, 0x03 }           
+
 typedef enum {
     PARSE_TLV_ABNORMAL_STATE,
     PARSE_TLV_TAG_STATE,
@@ -103,21 +108,25 @@ typedef enum {
 } PARSE_TLV_STATE;
 
 typedef enum {
+    PARSE_ATTR_ABNORMAL_STATE ,
     PARSE_ATTR_CERT_STATE ,  
     PARSE_ATTR_TBSCERT_STATE ,  
-    PARSE_ATTR_CONTEXT_SPECIFIC_STATE ,     
+    PARSE_ATTR_VERSION_EXPLICIT_STATE ,     
     PARSE_ATTR_VERSION_STATE ,           
     PARSE_ATTR_SERIAL_STATE,             
-    PARSE_ATTR_SIGALGO_STATE ,           
-    PARSE_ATTR_ISSUER_STATE ,            
+    PARSE_ATTR_SIGALGO_STATE ,               
+    PARSE_ATTR_ISSUER_CN_OID_STATE ,       
+    PARSE_ATTR_ISSUER_CN_STATE ,            
     PARSE_ATTR_VALIDITY_UTCTIME_STATE ,  
-    PARSE_ATTR_VALIDITY_GENTIME_STATE  , 
-    PARSE_ATTR_SUBJECT_STATE ,          
+    PARSE_ATTR_VALIDITY_GENTIME_STATE  ,    
+    PARSE_ATTR_SUBJECT_CN_OID_STATE ,       
+    PARSE_ATTR_SUBJECT_CN_STATE ,            
     PARSE_ATTR_SUBJPUBKEY_ALGO_STATE,    
     PARSE_ATTR_SUBJPUBKEY_KEY_STATE,    
     PARSE_ATTR_SIGINFO_STATE ,   
     PARSE_ATTR_SIGINFO_ALGO_STATE ,     
-    PARSE_ATTR_SIGINFO_VALUE_STATE  
+    PARSE_ATTR_SIGINFO_VALUE_STATE,
+    PARSE_ATTR_COMPLETE
 } PARSE_ATTR_STATE; 
 
 typedef struct {
@@ -173,12 +182,18 @@ u1 parse_attribute_state;
 
 u1 lengthBuffer[LENGTH_BUFFER_SIZE];
 
+u1 issuer_subject_cn_oid[OID_ISSUER_SUBJECT_CN_SIZE] = OID_ISSUER_SUBJECT_CN;
+
 void x509_load( X509_Cert_t *cert );
 void x509_parse_init( X509_Cert_t *cert);
 void x509_parse( void );
 void x509_parse_tag( u1 read );
 void x509_parse_length( u1 read );
+void x509_parse_length_extended( u1 read );
 void x509_parse_content( u1 read );
+void x509_parse_block_cert( void );
+void x509_parse_block_tbsCert( void );
+void x509_parse_block_versionExplicit( void );
 void x509_parse_attr_version( void );
 void x509_parse_attr_serial( void );
 void x509_parse_attr_sigAlgo_oid( void );
@@ -191,6 +206,7 @@ void x509_parse_attr_subject_cn( void );
 void x509_parse_attr_subjPubKey_algo_oid( void );
 void x509_parse_attr_subjPubKey_key( void );
 void x509_parse_attr_subjPubKey_keyExp( void );
+void x509_parse_block_sigInfo( void );
 void x509_parse_attr_sigInfo_algo_oid( void );
 void x509_parse_attr_sigInfo_value( void );
 

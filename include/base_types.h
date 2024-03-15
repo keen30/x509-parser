@@ -16,6 +16,9 @@
 
 #include <stdint.h>
 
+#define FAIL    0
+#define PASS    1
+
 typedef uint8_t u1;
 typedef uint16_t u2;
 typedef uint32_t u4;
