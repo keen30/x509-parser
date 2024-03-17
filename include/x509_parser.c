@@ -17,25 +17,74 @@
  * 
  */
 
-#define ISSUER_READ_UNDEFINED       0
-#define ISSUER_READ_C               1
-#define ISSUER_READ_O               2
-#define ISSUER_READ_CN              3
+void x509_parse_tag( void );
+void x509_parse_length( void );
+void x509_parse_length_extended( void );
+void x509_parse_content( void );
 
-#define SUBJECT_READ_UNDEFINED      0
-#define SUBJECT_READ_C              1
-#define SUBJECT_READ_O              2
-#define SUBJECT_READ_CN             3
+void x509_parse_block_cert( void );
+void x509_parse_block_tbsCert( void );
+void x509_parse_block_versionExplicit( void );
+void x509_parse_attr_version( void );
+void x509_parse_attr_serial( void );
+void x509_parse_attr_sigAlgo_oid( void );
+void x509_parse_attr_issuer_oid_c( void );
+void x509_parse_attr_issuer_oid_o( void );
+void x509_parse_attr_issuer_oid_cn( void );
+void x509_parse_attr_issuer_cn( void );
+void x509_parse_attr_validityNotBefore_UTCtime( void );
+void x509_parse_attr_validityNotAfter_UTCtime( void );
+void x509_parse_attr_subject_oid_c( void );
+void x509_parse_attr_subject_oid_o( void );
+void x509_parse_attr_subject_oid_cn( void );
+void x509_parse_attr_subject_cn( void );
+void x509_parse_attr_subjPubKey_algo_oid( void );
+void x509_parse_attr_subjPubKey_key( void );
+void x509_parse_attr_subjPubKey_keyExp( void );
+void x509_parse_block_sigInfo( void );
+void x509_parse_attr_sigInfo_algo_oid( void );
+void x509_parse_attr_sigInfo_value( void );
 
-u1 issuer_read_type;
-u1 subject_read_type;
+u1 dataPtr_Index;
+u1 *dataPtr_endOfAttribute;
+u1 bitString_unused_bits;
 
-u1 extendedLengthIndex;
-u1 extendedLengthByteSize;
-
-void moveDataPtrToEndOfAttribute( u4 offset )
+__attribute__((always_inline)) static inline u1 dataPtr( void )                     /*reads the data but doesn't move the data pointer*/
 {
-    Certificate->readPtr += offset;                                 /*Move the data pointer to end of attribute*/
+    return Certificate->readPtr;
+}
+
+__attribute__((always_inline)) static inline u1 data_peek( void )                     /*reads the data but doesn't move the data pointer*/
+{
+    return *( Certificate->readPtr);
+}
+
+__attribute__((always_inline)) static inline void dataPtr_increment( void )
+{
+    Certificate->readPtr++;
+    dataPtr_Index++;
+}
+
+__attribute__((always_inline)) static inline void dataPtr_deccrement( void )
+{
+    Certificate->readPtr--;
+    dataPtr_Index--;
+}
+__attribute__((always_inline)) static inline void dataPtr_offset( u4 offset )
+{
+    Certificate->readPtr += offset;
+    dataPtr_Index += offset;
+}
+
+__attribute__((always_inline)) static inline void moveDataPtrToEndOfAttribute( void )
+{
+    Certificate->readPtr = dataPtr_endOfAttribute;                                      /*Move the data pointer to end of attribute*/
+}
+__attribute__((always_inline)) static inline u1 data_read( void )                     /*reads 1 byte of data and increment data pointer*/
+{
+    u1 data = *( Certificate->readPtr);
+    dataPtr_increment();
+    return ;
 }
 
 u1 oid_checker( u1 *oid_dataPtr, u1 *oid_compare, u4 length)
@@ -58,284 +107,375 @@ u1 oid_checker( u1 *oid_dataPtr, u1 *oid_compare, u4 length)
 }
 
 void x509_load( X509_Cert_t *cert );
-void moveDataPtrToEndOfAttribute( u4 offset );
 void x509_parse_init( X509_Cert_t *cert )
 {
     Certificate = cert;
-    issuer_read_type = ISSUER_READ_UNDEFINED;
-    issuer_read_type = SUBJECT_READ_UNDEFINED;
+    Certificate->readPtr = Certificate->data;
+    dataPtr_Index = 0;
+    parse_attribute_state = PARSE_ATTR_CERT_STATE;
 }
 
 void x509_parse( void )
 {
-    u1 dataPtr_idx = 0;
-    Certificate->readPtr = Certificate->data;
-
-    while ( Certificate->length > dataPtr_idx )
+    while ( Certificate->length > dataPtr_Index )
     {
-        u1 data = *( Certificate->readPtr );
+        x509_parse_tag();
+        x509_parse_length();
+        x509_parse_length_extended();
+        x509_parse_content();
 
-        switch (parse_tlv_state)
+        switch (parse_attribute_state)
         {
-            case PARSE_TLV_TAG_STATE:
-                x509_parse_tag( data );
-                break;
-            case PARSE_TLV_LENGTH_STATE:
-                x509_parse_length( data );
-                break;
-            case PARSE_TLV_LENGTH_EXT_STATE:
-                x509_parse_length_extended( data );
-                break;
-            case PARSE_TLV_CONTENT_STATE:
-                x509_parse_content( data );
-                break;
-            
-            default:
-                parse_tlv_state = PARSE_TLV_ABNORMAL_STATE;
-                break;
-        }
-        
-        Certificate->readPtr++;
-
-        if( ENCODING_FORM_PRIMITIVE == tlvInfo.encoding_form )
-        {
-            switch (parse_attribute_state)
-            {
-                
             case PARSE_ATTR_CERT_STATE:
+                x509_parse_block_cert();
                 break;
             case PARSE_ATTR_TBSCERT_STATE:
+                x509_parse_block_tbsCert();
                 break;
             case PARSE_ATTR_VERSION_EXPLICIT_STATE:
+                x509_parse_block_versionExplicit();
                 break;
             case PARSE_ATTR_VERSION_STATE:
+                x509_parse_attr_version();
                 break;
-            case PARSE_ATTR_SIGALGO_STATE:
+            case PARSE_ATTR_SERIAL_STATE:
+                x509_parse_attr_serial();
+                break;
+            case PARSE_ATTR_SIGALGO_OID_STATE:
+                x509_parse_attr_sigAlgo_oid();
                 break;
             case PARSE_ATTR_ISSUER_CN_OID_STATE:
+                x509_parse_attr_issuer_oid_cn();
                 break;
             case PARSE_ATTR_ISSUER_CN_STATE:
+                x509_parse_attr_issuer_cn();
                 break;
-            case PARSE_ATTR_VALIDITY_UTCTIME_STATE:
+            case PARSE_ATTR_VALIDITY_NOTBEFORE_STATE:
+                x509_parse_attr_validityNotBefore();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_VALIDITY_NOTAFTER_STATE:
+                x509_parse_attr_validityNotAfter();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SUBJECT_CN_OID_STATE:
+                x509_parse_attr_subject_oid_cn();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SUBJECT_CN_STATE:
+                x509_parse_attr_subject_cn();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SUBJPUBKEY_ALGO_STATE:
+                x509_parse_attr_subjPubKey_algo_oid();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SUBJPUBKEY_KEY_STATE:
+                x509_parse_attr_subjPubKey_key();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SUBJPUBKEY_EXPONENT_STATE:
+                x509_parse_attr_subjPubKey_keyExp();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SIGINFO_STATE:
+                x509_parse_block_sigInfo();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SIGINFO_ALGO_OID_STATE:
+                x509_parse_attr_sigAlgo_oid();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_SIGINFO_VALUE_STATE:
+                x509_parse_attr_sigInfo_value();
                 break;
-            case PARSE_ATTR_CERT_STATE:
+            case PARSE_ATTR_COMPLETE:
                 break;
             
             default:
                 break;
-            }
-            x509_parse_block_cert();
-            x509_parse_block_tbsCert();
-            x509_parse_block_versionExplicit();
-            x509_parse_attr_version();
-            x509_parse_attr_serial();
-            x509_parse_attr_sigAlgo_oid();
-            x509_parse_attr_issuer_oid_cn();
-            x509_parse_attr_issuer_cn();
-            x509_parse_attr_validityNotBefore();
-            x509_parse_attr_validityNotAfter();
-            x509_parse_attr_subject_oid_cn();
-            x509_parse_attr_subject_cn();
-            x509_parse_attr_subjPubKey_algo_oid();
-            x509_parse_attr_subjPubKey_key();
-            x509_parse_attr_subjPubKey_keyExp();
-            x509_parse_attr_sigAlgo_oid();
-            x509_parse_attr_sigInfo_algo_oid();
-            x509_parse_attr_sigInfo_value();
-
-            moveDataPtrToEndOfAttribute( tlvInfo.length );
-            parse_tlv_state = PARSE_TLV_TAG_STATE;
         }
-        else if( ENCODING_FORM_CONSTRUCTIVE == tlvInfo.encoding_form )
+
+        if( ENCODING_FORM_PRIMITIVE == tlvInfo.encoding_form )          /* move to end of attribute content*/
         {
-
+            moveDataPtrToEndOfAttribute();
         }
-        else {
-            parse_tlv_state = PARSE_TLV_ABNORMAL_STATE;
-        }
-
-        /*process abnormal state start here*/
-        /*process abnormal state end here*/
 
     }
 
+    /*process abnormal state start here*/
+    /*process abnormal state end here*/
+
 }
 
-void x509_parse_tag( u1 read )
+void x509_parse_tag()
 {
+    u1 read = dataPtr_read();
     tlvInfo.class = ( read&CLASS_BITS_MASK )>>CLASS_BITS_POS;
     tlvInfo.encoding_form = ( read&ENCODING_FORM_BIT_MASK )>>ENCODING_FORM_BIT_POS;
-    tlvInfo.tag = read&TAG_NUMBER_MASK;
-    tlvInfo.attrBuffer = NULL;
+    tlvInfo.tag_num = read&TAG_NUMBER_MASK;
+    tlvInfo.tag = read;
     tlvInfo.length = 0;
-    tlvInfo.readContentState = PARSE_READCONTENT_IDLE;
-    parse_tlv_state = PARSE_TLV_LENGTH_STATE;
+    tlvInfo.attrBuffer = NULL;
+    bitString_unused_bits = 0;
 }
 
-void x509_parse_length( u1 read )
+void x509_parse_length()
 {
+    u1 read = dataPtr_read();
     u1 isLengthExtended = ( read&LENGTH_EXTENDED_BIT_MASK )>>LENGTH_EXTENDED_BIT_POS;
     u1 length_basic = read&LENGTH_BASIC_MASK;
-    if( 0 != length_basic && LENGTH_BUFFER_SIZE >= length_basic )   /*check if the length value is greater than 0 or the buffer for
-                                                                        extended length does not exceed LENGTH_BUFFER_SIZE*/
+    if( 0 != length_basic )                                                                     /*check if the length value is greater than 0 */                                     
     {
-        if( LENGTH_EXTENDED_TRUE == isLengthExtended )              /*check if extended length*/
-        {
-            extendedLengthByteSize = length_basic;                  /*length octet interpret the basic length value as byte size of extended length*/
-            extendedLengthIndex = extendedLengthByteSize;  
-            tlvInfo.length = 0xFFFFFFFF;                      
-            parse_tlv_state = PARSE_TLV_LENGTH_EXT_STATE;
+        if( LENGTH_EXTENDED_TRUE == isLengthExtended && LENGTH_BUFFER_SIZE >= length_basic )    /*check if extended length*/
+        {                                                                                       /*extended length should not exceed LENGTH_BUFFER_SIZE*/
+            tlvInfo.length = length_basic;                                                      /*for extended length, this value is the extended length byte size*/
         }
-        else{
+        else{                                                                                   /*for basic length, only 1 byte */
             tlvInfo.length = length_basic;  
-            parse_tlv_state = PARSE_TLV_LENGTH_EXT_STATE;
         }
-    }
-    else if ( 0 == length_basic) 
-    {
-        parse_tlv_state = PARSE_TLV_TAG_STATE;                      /*go back to TAG STATE if length is zero*/
     }
     else
     {
-        parse_tlv_state = PARSE_TLV_ABNORMAL_STATE;
     }
 }
 
-void x509_parse_length_extended( u1 read )
+void x509_parse_length_extended()
 {
-    u1 isLastByte = ( read&0x80 )>>7;                               /*read most significant bit*/
-    u4 length_extended = read&LENGTH_BASIC_MASK;
-    if( (u1)0 < extendedLengthIndex || (u1)1 == isLastByte )
-    { 
-        tlvInfo.length &= ( (u4)read )<<(extendedLengthIndex-1);
-    }
-    else{ 
-        parse_tlv_state = PARSE_TLV_CONTENT_STATE;
-    }
-    extendedLengthIndex--;
-}
-
-void x509_parse_content( u1 read )
-{
-    u1 tag_val = read&0x3F;
-    u1 class_val = ( read&CLASS_BITS_MASK )>>CLASS_BITS_POS;
-    switch (read)
-    {
-
-    case TAG_TELETEXSTRING:
-    case TAG_BMPSTRING:
-    case TAG_UTF8STRING:
-    case TAG_PRINTABLESTRING:
-    case TAG_IA5STRING:
-    case TAG_OCTETSTRING:
-    case TAG_UNIVERSALSTRING:
-    case TAG_BOOLEAN:
-    case TAG_INTEGER:
-    case TAG_OBJECTIDENTIFIER:
-        Certificate->readPtr--;                     /*If it's a value, move back the data pointer a byte*/          
-        break;
+    u1 extendedLengthByteSize = tlvInfo.length;  
+    u1 K = extendedLengthByteSize;                              /*inialize to most significant byte. the byte sequence is big endian*/
+    u1 leading_byte = dataPtr_read()&LENGTH_BASIC_MASK;         /*only get the significant bits = bit6 to bit0 for leading byte */
     
-    case TAG_BITSTRING:
-                                                    /*If it's a bitstring tag, the first byte of content is the unused bits value*/    
-        break;
-        
+    tlvInfo.length = ( ((u4)0u) & ((u4)leading_byte)<<(8*(K-1)) );  /*save the leading byte value*/
+    K--;
 
-    default:
-        Certificate->readPtr--;                     /*If it's unknown tag, move back the data pointer a byte*/     
-        break;
+    while( 0 < K )                                              /*loop extended length bytes*/
+    {
+        tlvInfo.length |= ((u4)dataPtr_read())<<( 8*(K-1) );
+        K--;
+    }
+
+    
+    dataPtr_endOfAttribute = dataPtr();
+    dataPtr_endOfAttribute += tlvInfo.length;                   /*gets the pointer to next tag*/
+}
+
+
+void x509_parse_content()
+{
+    u1 data = data_peek();
+    switch (data)
+    {
+        case TAG_TELETEXSTRING:
+        case TAG_BMPSTRING:
+        case TAG_UTF8STRING:
+        case TAG_PRINTABLESTRING:
+        case TAG_IA5STRING:
+        case TAG_OCTETSTRING:
+        case TAG_UNIVERSALSTRING:
+        case TAG_BOOLEAN:
+        case TAG_INTEGER:
+        case TAG_OBJECTIDENTIFIER:        
+            break;
+        
+        case TAG_BITSTRING:
+            bitString_unused_bits = dataPtr_read();             /*If it's a bitstring tag, the first byte of content is the unused bits value. so move the */    
+            break;
+            
+        case TAG_SEQUENCE:
+        case TAG_SET:        
+            break;
+            
+        default:    
+            break;
     }
 };
 
-void x509_parse_block_cert( void );
-void x509_parse_block_tbsCert( void );
-void x509_parse_block_versionExplicit( void );
+void x509_parse_block_cert( void )
+{
+    if( TAG_SEQUENCE == tlvInfo.tag )
+    {
+        parse_attribute_state = PARSE_ATTR_TBSCERT_STATE;
+    }
+}
+
+void x509_parse_block_tbsCert( void )
+{
+    if( TAG_SEQUENCE  == tlvInfo.tag )
+    {
+        parse_attribute_state = PARSE_ATTR_VERSION_EXPLICIT_STATE;
+    }
+}
+
+void x509_parse_block_versionExplicit( void )
+{
+    if( TAG_CHOICE(4)  == tlvInfo.tag )
+    {
+        parse_attribute_state = PARSE_ATTR_VERSION_STATE;
+    }
+}
 
 void x509_parse_attr_version( void )
 {
-    if( PARSE_READCONTENT_READING == tlvInfo.readContentState && TAG_INTEGER == tlvInfo.tag )
+    if( TAG_INTEGER == tlvInfo.tag )
     {
-        Cert_Attributes.version = *( Certificate->readPtr );
-        tlvInfo.readContentState = PARSE_READCONTENT_COMPLETE;
+        Cert_Attributes.version = data_peek();                /*reads the certificate version*/
+        parse_attribute_state = PARSE_ATTR_SERIAL_STATE;
     }
 }
 
 void x509_parse_attr_serial( void )
 {
-    if( PARSE_READCONTENT_READING == tlvInfo.readContentState && TAG_INTEGER == tlvInfo.tag )
+    if( TAG_INTEGER == tlvInfo.tag )
     {
         Cert_Attributes.sn_length = tlvInfo.length;
-        Cert_Attributes.sn = *( Certificate->readPtr );
-        tlvInfo.readContentState = PARSE_READCONTENT_COMPLETE;
+        Cert_Attributes.sn = dataPtr();
+        parse_attribute_state = PARSE_ATTR_SIGALGO_OID_STATE;
     }
 }
 
-
 void x509_parse_attr_sigAlgo_oid( void )
 {
-    if( PARSE_READCONTENT_READING == tlvInfo.readContentState && TAG_OBJECTIDENTIFIER == tlvInfo.tag )
+    if( TAG_OBJECTIDENTIFIER == tlvInfo.tag )
     {
         Cert_Attributes.sigAlgo_length = tlvInfo.length;
-        Cert_Attributes.sigAlgo = *( Certificate->readPtr );
-        tlvInfo.readContentState = PARSE_READCONTENT_COMPLETE;
+        Cert_Attributes.sigAlgo = dataPtr();
+        parse_attribute_state = PARSE_ATTR_ISSUER_CN_OID_STATE;
     }
 }
 
 void x509_parse_attr_issuer_oid_cn( void )
 {
-    if( PARSE_READCONTENT_READING == tlvInfo.readContentState && TAG_OBJECTIDENTIFIER == tlvInfo.tag )
+    if( TAG_OBJECTIDENTIFIER == tlvInfo.tag )
     {
-        u1 *oid = *( Certificate->readPtr );
+        u1 *oid = dataPtr();
         if( PASS == oid_checker( issuer_subject_cn_oid, oid, tlvInfo.length ) )
         {
-            issuer_read_type = ISSUER_READ_CN;
-            tlvInfo.readContentState = PARSE_READCONTENT_COMPLETE;
+            parse_attribute_state = PARSE_ATTR_ISSUER_CN_STATE;
         }
     }
 }
 
 void x509_parse_attr_issuer_cn( void )
 {
-    if( PARSE_READCONTENT_READING == tlvInfo.readContentState && ISSUER_READ_CN == issuer_read_type &&
-        (
-            TAG_TELETEXSTRING == tlvInfo.tag ||                             /*Described in RFC 5280 */
-            TAG_PRINTABLESTRING == tlvInfo.tag ||
-            TAG_UNIVERSALSTRING == tlvInfo.tag ||
-            TAG_UTF8STRING == tlvInfo.tag ||
-            TAG_BMPSTRING == tlvInfo.tag 
+    if(  
+        TAG_TELETEXSTRING == tlvInfo.tag ||                             /*Described in RFC 5280 */
+        TAG_PRINTABLESTRING == tlvInfo.tag ||
+        TAG_UNIVERSALSTRING == tlvInfo.tag ||
+        TAG_UTF8STRING == tlvInfo.tag ||
+        TAG_BMPSTRING == tlvInfo.tag 
         )
-    )
     {
         Cert_Attributes.issuer_cn_length = tlvInfo.length;
-        Cert_Attributes.issuer_cn = *( Certificate->readPtr );
-        tlvInfo.readContentState = PARSE_READCONTENT_COMPLETE;
+        Cert_Attributes.issuer_cn = dataPtr();
+        parse_attribute_state = PARSE_ATTR_VALIDITY_NOTBEFORE_STATE;
     }
 }
 
-void x509_parse_attr_validityNotBefore( void );
-void x509_parse_attr_validityNotAfter( void );
-void x509_parse_attr_subject_oid_cn( void );
-void x509_parse_attr_subject_cn( void );
-void x509_parse_attr_subjPubKey_algo_oid( void );
-void x509_parse_attr_subjPubKey_key( void );
-void x509_parse_attr_subjPubKey_keyExp( void );
-void x509_parse_block_sigInfo( void );
-void x509_parse_attr_sigInfo_algo_oid( void );
-void x509_parse_attr_sigInfo_value( void );
+void x509_parse_attr_validityNotBefore_UTCtime( void )
+{
+    if( TAG_UTCTIME == tlvInfo.tag )
+    {
+        Cert_Attributes.validityNotBefore_length = tlvInfo.length;
+        Cert_Attributes.validityNotBefore = dataPtr();
+        parse_attribute_state = PARSE_ATTR_VALIDITY_NOTAFTER_STATE;
+    }
+}
+void x509_parse_attr_validityNotAfter_UTCtime( void )
+{
+    if( TAG_UTCTIME == tlvInfo.tag )
+    {
+        Cert_Attributes.validityNotAfter_length = tlvInfo.length;
+        Cert_Attributes.validityNotAfter = dataPtr();
+        parse_attribute_state = PARSE_ATTR_SUBJECT_CN_OID_STATE;
+    }
+}
+
+void x509_parse_attr_subject_oid_cn( void )
+{
+    if( TAG_OBJECTIDENTIFIER == tlvInfo.tag )
+    {
+        u1 *oid = dataPtr();
+        if( PASS == oid_checker( issuer_subject_cn_oid, oid, tlvInfo.length ) )
+        {
+            parse_attribute_state = PARSE_ATTR_SUBJECT_CN_STATE;
+        }
+    }
+}
+
+void x509_parse_attr_subject_cn( void )
+{
+    if(  
+        TAG_TELETEXSTRING == tlvInfo.tag ||                             /*Described in RFC 5280 */
+        TAG_PRINTABLESTRING == tlvInfo.tag ||
+        TAG_UNIVERSALSTRING == tlvInfo.tag ||
+        TAG_UTF8STRING == tlvInfo.tag ||
+        TAG_BMPSTRING == tlvInfo.tag 
+        )
+    {
+        Cert_Attributes.subject_cn_length = tlvInfo.length;
+        Cert_Attributes.subject_cn = dataPtr();
+        parse_attribute_state = PARSE_ATTR_SUBJPUBKEY_ALGO_STATE;
+    }
+}
+
+void x509_parse_attr_subjPubKey_algo_oid( void )
+{
+    if( TAG_OBJECTIDENTIFIER == tlvInfo.tag )
+    {
+        u1 *oid = dataPtr();
+        if( PASS == oid_checker( rsa_sha256_oid, oid, tlvInfo.length ) )
+        {
+            parse_attribute_state = PARSE_ATTR_SUBJPUBKEY_KEY_STATE;
+        }
+    }
+}
+
+void x509_parse_attr_subjPubKey_key( void )
+{
+    if( TAG_BITSTRING == tlvInfo.tag && 0 == bitString_unused_bits )
+    {
+        Cert_Attributes.publicKey_length = tlvInfo.length - 1;
+        Cert_Attributes.publicKey = dataPtr();
+        parse_attribute_state = PARSE_ATTR_SUBJPUBKEY_EXPONENT_STATE;
+    }
+}
+
+void x509_parse_attr_subjPubKey_keyExp( void )
+{
+    if( TAG_INTEGER == tlvInfo.tag )
+    {    
+        u1 M = tlvInfo.length;
+        u4 public_exponent = 0u;
+
+        while( 0 < M )                                              /*loop integer bytes*/
+        {
+            public_exponent |= dataPtr_read()<<( 8*(M-1) );
+            M--;
+        }
+
+        Cert_Attributes.publicKeyExp = public_exponent;
+        parse_attribute_state = PARSE_ATTR_SIGINFO_STATE;
+    }
+}
+
+void x509_parse_block_sigInfo( void )
+{
+    if( TAG_SEQUENCE == tlvInfo.tag )
+    {
+        parse_attribute_state = PARSE_ATTR_SIGINFO_ALGO_OID_STATE;
+    }
+}
+
+void x509_parse_attr_sigInfo_algo_oid( void )
+{
+    if( TAG_OBJECTIDENTIFIER == tlvInfo.tag )
+    {
+        u1 *oid = dataPtr();
+        if( PASS == oid_checker( rsa_sha256_oid, oid, tlvInfo.length ) )
+        {
+            parse_attribute_state = PARSE_ATTR_SIGINFO_VALUE_STATE;
+        }
+    }
+}
+
+void x509_parse_attr_sigInfo_value( void )
+{
+    if( TAG_BITSTRING == tlvInfo.tag && 0 == bitString_unused_bits )
+    {
+        Cert_Attributes.signatureInfoValue_length = tlvInfo.length;
+        Cert_Attributes.signatureInfoValue = dataPtr();
+        parse_attribute_state = PARSE_ATTR_COMPLETE;
+    }
+}
