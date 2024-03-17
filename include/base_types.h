@@ -16,14 +16,16 @@
 
 #include <stdint.h>
 
+
 #define FAIL    0
 #define PASS    1
 #define FALSE   0
 #define TRUE    1
 
-typedef uint8_t u1;
+typedef uint8_t  u1;
 typedef uint16_t u2;
 typedef uint32_t u4;
 typedef uint64_t u8;
+typedef u1       BOOL;
 
 #endif

@@ -9,15 +9,34 @@
  * 
  */
 
+
+
 #ifndef X509_PARSER_H
 #define X509_PARSER_H
 
 #include "base_types.h"
 
-#define MAX_CERTIFICATES                1
+/**
+ * @brief USER DEFINED
+ * 
+*/
 
-#define LENGTH_BUFFER_SIZE          2       /* This means 2 bytes unsigned integer*/
+#define MAX_CERTIFICATES            1
+
+#define LENGTH_BUFFER_SIZE          2       /* For extended or long length. This means 2 bytes unsigned integer*/
 #define ATTRIBUTE_BUFFER_SIZE       1024    /* Attribute buffer size.*/
+
+/*For the mean time, only 1 OID is supported for issuer and subject*/
+#define OID_ISSUER_SUBJECT_CN_SIZE          (u1)3      
+#define OID_ISSUER_SUBJECT_CN               { 0x55, 0x04, 0x03 }   
+
+/*RSA with SHA256 OID */
+#define OID_RSA_SHA256_SIZE                 (u1)9     
+//#define OID_RSA_SHA256                      { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x0B }
+#define OID_RSA_SHA256                      { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x01 }
+
+/* END USER DEFINED*/
+
 
 /**
  * @brief DER Encoding of ASN.1 Types
@@ -101,10 +120,6 @@
 #define UTCTIME_OPT3_YYMMDDHHMM_HHMM        15
 #define UTCTIME_OPT4_YYMMDDHHMMSS_HHMM      17
 
-
-
-
-
 #define PARSE_SUCCESS                       (u1)1
 #define PARSE_FAIL                          (u1)0
 
@@ -122,14 +137,6 @@
 #define PARSE_READLENGTH_IDLE               (u1)0
 #define PARSE_READLENGTH_EXTENDED           (u1)1
 #define PARSE_READLENGTH_COMPLETE           (u1)2
-
-/*For the mean time, only 1 OID is supported for issuer and subject*/
-#define OID_ISSUER_SUBJECT_CN_SIZE          (u1)3      
-#define OID_ISSUER_SUBJECT_CN               { 0x55, 0x04, 0x03 }   
-
-/*RSA with SHA256 OID */
-#define OID_RSA_SHA256_SIZE                 (u1)9     
-#define OID_RSA_SHA256                      { 0x2A, 0x86, 0x48, 0x86, 0xF7, 0x0D, 0x01, 0x01, 0x0B }
 
 typedef enum {
     PARSE_ATTR_ABNORMAL_STATE ,
@@ -164,7 +171,6 @@ typedef struct {
     u1 *attrBuffer;
 } tlv_info_t;
 
-
 typedef struct {
     u4 length;
     u1 *readPtr;
@@ -172,47 +178,31 @@ typedef struct {
 } X509_Cert_t;
 
 typedef struct {
-    u1 version;
-    u1 sn_length;
-    u1 *sn;
-    u1 sigAlgo_length;
-    u1 *sigAlgo;
-    u1 issuer_cn_length;
-    u1 *issuer_cn;
-    u1 validityNotBefore_length;
-    u1 *validityNotBefore;
-    u1 validityNotAfter_length;
-    u1 *validityNotAfter;
-    u1 subject_cn_length;
-    u1 *subject_cn;
-    u4 publicKey_length;
-    u1 *publicKey;
-    u4 publicKeyExp_length;
-    u4 publicKeyExp;
-    u4 signatureInfoValue_length;
-    u1 *signatureInfoValue;
+    u4 length;
+    u1 *data;
+} attribute_t;
+
+typedef struct {
+    attribute_t version;
+    attribute_t serialnumber;
+    attribute_t sig_algo_oid;
+    attribute_t issuer_cn;
+    attribute_t validity_notBefore;
+    attribute_t validity_notAfter;
+    attribute_t subject_cn;
+    attribute_t publicKey_key;
+    attribute_t publicKey_exponent;
+    attribute_t sigInfo_algo_oid;
+    attribute_t sigInfo_value;
 } X509_Cert_Attributes_t;
 
-tlv_info_t tlvInfo;
+extern X509_Cert_t *Certificate;
 
-X509_Cert_t *Certificate;
+extern X509_Cert_Attributes_t Cert_Attributes;
 
-X509_Cert_Attributes_t Cert_Attributes;
-
-u1 parse_result;
-
-u1 parse_attribute_state;
-
-u1 lengthBuffer[LENGTH_BUFFER_SIZE];
-
-u1 issuer_subject_cn_oid[OID_ISSUER_SUBJECT_CN_SIZE] = OID_ISSUER_SUBJECT_CN;
-
-u1 rsa_sha256_oid[OID_RSA_SHA256_SIZE] = OID_RSA_SHA256;
-
-void x509_load( X509_Cert_t *cert );
-void x509_parse_init( X509_Cert_t *cert);
-void x509_parse( void );
-
+extern void x509_parse_init( X509_Cert_t *cert);
+extern u1 x509_parse( void );
+u1 oid_checker( u1 *oid_dataPtr, u1 *oid_compare, u4 length);
 
 
 #endif
