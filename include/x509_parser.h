@@ -155,7 +155,9 @@ typedef enum {
     PARSE_ATTR_SUBJECT_CN_STATE ,            
     PARSE_ATTR_SUBJPUBKEY_ALGO_STATE,    
     PARSE_ATTR_SUBJPUBKEY_KEY_STATE,    
-    PARSE_ATTR_SUBJPUBKEY_EXPONENT_STATE,    
+    PARSE_ATTR_ISSUERUNIQUEID_STATE,   
+    PARSE_ATTR_SUBJECTUNIQUEID_STATE,   
+    PARSE_ATTR_EXTENSIONS_STATE,    
     PARSE_ATTR_SIGINFO_STATE ,   
     PARSE_ATTR_SIGINFO_ALGO_OID_STATE ,     
     PARSE_ATTR_SIGINFO_VALUE_STATE,
@@ -191,7 +193,6 @@ typedef struct {
     attribute_t validity_notAfter;
     attribute_t subject_cn;
     attribute_t publicKey_key;
-    attribute_t publicKey_exponent;
     attribute_t sigInfo_algo_oid;
     attribute_t sigInfo_value;
 } X509_Cert_Attributes_t;
@@ -200,6 +201,7 @@ extern X509_Cert_t *Certificate;
 
 extern X509_Cert_Attributes_t Cert_Attributes;
 
+extern X509_Cert_Attributes_t* x509_getCertAttributes( void );
 extern void x509_parse_init( X509_Cert_t *cert);
 extern u1 x509_parse( void );
 u1 oid_checker( u1 *oid_dataPtr, u1 *oid_compare, u4 length);

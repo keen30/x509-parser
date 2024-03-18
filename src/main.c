@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #define DER_CERT_BUFF_SIZE  1028
-char filePath[] = "../samplecertkeen.der";
+char filePath[] = "../sampleCert.der";
 
 
 int main ( void )
@@ -13,6 +13,7 @@ int main ( void )
     u4 freadResult;
     BOOL read_complete;
     X509_Cert_t Certificate;
+    X509_Cert_Attributes_t* parsed_attr;
     FILE *der_cert;
 
     der_cert = fopen(filePath,"rb");  // r for read, b for binary
@@ -44,6 +45,7 @@ int main ( void )
         x509_parse_init( &Certificate );
         if( PASS == x509_parse() )
         {
+            parsed_attr = x509_getCertAttributes();
             printf("successfully parsed data!\n");
         }
         else{

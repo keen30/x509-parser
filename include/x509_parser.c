@@ -16,7 +16,10 @@
  * @brief 
  * 
  */
+
 #define _PARSE_ATTR( TAG, LENGTH, CONTENT, NEXT_STATE, OTHER_CONDITION )
+
+X509_Cert_Attributes_t* x509_getCertAttributes( void );
 void x509_parse_init( X509_Cert_t *cert);
 u1 x509_parse( void );
 void x509_parse_tag( void );
@@ -44,7 +47,10 @@ void x509_parse_attr_subject_oid_cn( void );
 void x509_parse_attr_subject_cn( void );
 void x509_parse_attr_subjPubKey_algo_oid( void );
 void x509_parse_attr_subjPubKey_key( void );
-void x509_parse_attr_subjPubKey_keyExp( void );
+void x509_parse_attr_issuerUniqueID( void );
+void x509_parse_attr_subjectUniqueID( void );
+void x509_parse_attr_extensions( void );
+void x509_parse_attr_sigInfo_value( void );
 void x509_parse_block_sigInfo( void );
 void x509_parse_attr_sigInfo_algo_oid( void );
 void x509_parse_attr_sigInfo_value( void );
@@ -63,7 +69,7 @@ u1 issuer_subject_cn_oid[OID_ISSUER_SUBJECT_CN_SIZE] = OID_ISSUER_SUBJECT_CN;
 
 u1 rsa_sha256_oid[OID_RSA_SHA256_SIZE] = OID_RSA_SHA256;
 
-u1 dataPtr_Index;
+u4 dataPtr_Index;
 
 u1 *dataPtr_endOfAttribute;
 
@@ -106,6 +112,11 @@ __attribute__((always_inline)) static inline u1 data_read( void )               
     u1 data = *( Certificate->readPtr);
     dataPtr_increment();
     return data;
+}
+
+X509_Cert_Attributes_t* x509_getCertAttributes( void )
+{
+    return (X509_Cert_Attributes_t*)(&Cert_Attributes);
 }
 
 void x509_parse_init( X509_Cert_t *cert )
@@ -171,14 +182,18 @@ u1 x509_parse( void )
             case PARSE_ATTR_SUBJPUBKEY_KEY_STATE:
                 x509_parse_attr_subjPubKey_key();
                 break;
-            case PARSE_ATTR_SUBJPUBKEY_EXPONENT_STATE:
-                x509_parse_attr_subjPubKey_keyExp();
+            case PARSE_ATTR_ISSUERUNIQUEID_STATE:
+            case PARSE_ATTR_SUBJECTUNIQUEID_STATE:
+            case PARSE_ATTR_EXTENSIONS_STATE:
+                x509_parse_attr_issuerUniqueID();
+                x509_parse_attr_subjectUniqueID();
+                x509_parse_attr_extensions();
                 break;
             case PARSE_ATTR_SIGINFO_STATE:
                 x509_parse_block_sigInfo();
                 break;
             case PARSE_ATTR_SIGINFO_ALGO_OID_STATE:
-                x509_parse_attr_sigAlgo_oid();
+                x509_parse_attr_sigInfo_algo_oid();
                 break;
             case PARSE_ATTR_SIGINFO_VALUE_STATE:
                 x509_parse_attr_sigInfo_value();
@@ -481,16 +496,31 @@ void x509_parse_attr_subjPubKey_key( void )
     {
         Cert_Attributes.publicKey_key.length = tlvInfo.length;
         Cert_Attributes.publicKey_key.data = dataPtr();
-        parse_attribute_state = PARSE_ATTR_SIGINFO_STATE;
+        parse_attribute_state = PARSE_ATTR_ISSUERUNIQUEID_STATE;
     }
 }
 
-void x509_parse_attr_subjPubKey_keyExp( void )
+void x509_parse_attr_issuerUniqueID( void )
 {
-    if( TAG_INTEGER == tlvInfo.tag )
-    {    
-        Cert_Attributes.publicKey_exponent.length = tlvInfo.length;
-        Cert_Attributes.publicKey_exponent.data = dataPtr();
+    if( TAG_IMPLICIT(CLASS_CONTEXT_SPECIFIC,ENCODING_FORM_PRIMITIVE,1) == tlvInfo.tag )
+    {
+        parse_attribute_state = PARSE_ATTR_SUBJECTUNIQUEID_STATE;
+    }
+}
+
+void x509_parse_attr_subjectUniqueID( void )
+{
+    if( TAG_IMPLICIT(CLASS_CONTEXT_SPECIFIC,ENCODING_FORM_PRIMITIVE,2) == tlvInfo.tag )
+    {
+        parse_attribute_state = PARSE_ATTR_EXTENSIONS_STATE;
+    }
+}
+
+void x509_parse_attr_extensions( void )
+{
+    if( TAG_EXPLICIT(CLASS_CONTEXT_SPECIFIC,3) == tlvInfo.tag )
+    {
+        moveDataPtrToEndOfAttribute();
         parse_attribute_state = PARSE_ATTR_SIGINFO_STATE;
     }
 }
@@ -510,6 +540,8 @@ void x509_parse_attr_sigInfo_algo_oid( void )
         u1 *oid = dataPtr();
         if( PASS == oid_checker( rsa_sha256_oid, oid, tlvInfo.length ) )
         {
+        Cert_Attributes.sigInfo_algo_oid.length = tlvInfo.length;
+        Cert_Attributes.sigInfo_algo_oid.data = dataPtr();
             parse_attribute_state = PARSE_ATTR_SIGINFO_VALUE_STATE;
         }
     }
@@ -519,8 +551,8 @@ void x509_parse_attr_sigInfo_value( void )
 {
     if( TAG_BITSTRING == tlvInfo.tag && 0 == bitString_unused_bits )
     {
-        Cert_Attributes.sigInfo_algo_oid.length = tlvInfo.length;
-        Cert_Attributes.sigInfo_algo_oid.data = dataPtr();
+        Cert_Attributes.sigInfo_value.length = tlvInfo.length;
+        Cert_Attributes.sigInfo_value.data = dataPtr();
         parse_attribute_state = PARSE_ATTR_COMPLETE;
     }
 }
